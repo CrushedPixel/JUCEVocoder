@@ -13,7 +13,6 @@ Author:  dbayl
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "SynthSound.h"
 #include "SynthVoice.h"
-#include "maximilian.h"
 
 
 // Must initialize static variable outside of class definition

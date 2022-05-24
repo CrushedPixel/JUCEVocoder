@@ -1,8 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT id="BvLZtA" name="JUCEVocoder" projectType="audioplug" jucerVersion="5.4.7"
-              pluginCharacteristicsValue="pluginWantsMidiIn">
+<JUCERPROJECT id="BvLZtA" name="JUCEVocoder" projectType="audioplug" pluginCharacteristicsValue="pluginWantsMidiIn"
+              displaySplashScreen="1" jucerFormatVersion="1" pluginCode="Jvcd"
+              pluginManufacturerCode="DBay" pluginManufacturer="David Baylies">
   <MAINGROUP id="AhRHDG" name="JUCEVocoder">
+    <GROUP id="{F903D5C2-DB1D-A0D2-115D-253FEDCECA28}" name="Images">
+      <FILE id="Nx5UgV" name="ButtonTemplate.png" compile="0" resource="1"
+            file="Images/ButtonTemplate.png"/>
+      <FILE id="qYD2QG" name="ChooseYourWeapon.png" compile="0" resource="1"
+            file="Images/ChooseYourWeapon.png"/>
+      <FILE id="Oj0qXH" name="Noise.png" compile="0" resource="1" file="Images/Noise.png"/>
+      <FILE id="fqKn5u" name="NoiseDown.png" compile="0" resource="1" file="Images/NoiseDown.png"/>
+      <FILE id="yVXkay" name="NoiseOver.png" compile="0" resource="1" file="Images/NoiseOver.png"/>
+      <FILE id="Nhfcmy" name="Saw.png" compile="0" resource="1" file="Images/Saw.png"/>
+      <FILE id="CSWvyR" name="SawDown.png" compile="0" resource="1" file="Images/SawDown.png"/>
+      <FILE id="hPR6KM" name="SawOver.png" compile="0" resource="1" file="Images/SawOver.png"/>
+      <FILE id="DgwTRC" name="Square.png" compile="0" resource="1" file="Images/Square.png"/>
+      <FILE id="zCGZ31" name="SquareDown.png" compile="0" resource="1" file="Images/SquareDown.png"/>
+      <FILE id="YntdSL" name="SquareOver.png" compile="0" resource="1" file="Images/SquareOver.png"/>
+    </GROUP>
     <GROUP id="{17C8CF73-4E77-D17E-D4AC-08515ED16B1F}" name="Source">
       <GROUP id="{3C95B877-154A-9B75-2B75-A3E817F9A757}" name="ExternalSDKS">
         <GROUP id="{EEAB9A35-6977-8E1F-120F-CD7F825259BE}" name="Maximilian">
@@ -33,8 +49,6 @@
               <FILE id="PFKYSA" name="stb_vorbis.h" compile="0" resource="0" file="Source/ExternalSDKs/Maximilian/src/libs/stb_vorbis.h"/>
             </GROUP>
             <FILE id="G97E23" name="maximilian.cpp" compile="1" resource="0" file="Source/ExternalSDKs/Maximilian/src/maximilian.cpp"/>
-            <FILE id="JWUCTH" name="maximilian.embind.cpp" compile="1" resource="0"
-                  file="Source/ExternalSDKs/Maximilian/src/maximilian.embind.cpp"/>
             <FILE id="gWWG4N" name="maximilian.h" compile="0" resource="0" file="Source/ExternalSDKs/Maximilian/src/maximilian.h"/>
           </GROUP>
         </GROUP>
@@ -78,6 +92,30 @@
         <MODULEPATH id="juce_dsp" path="../../../../../JUCE/modules"/>
       </MODULEPATHS>
     </VS2017>
+    <XCODE_MAC targetFolder="Builds/MacOSX">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug"/>
+        <CONFIGURATION isDebug="0" name="Release"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_video" path="../../juce"/>
+        <MODULEPATH id="juce_opengl" path="../../juce"/>
+        <MODULEPATH id="juce_gui_extra" path="Source/ExternalSDKs/JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="Source/ExternalSDKs/JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="Source/ExternalSDKs/JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="Source/ExternalSDKs/JUCE/modules"/>
+        <MODULEPATH id="juce_dsp" path="Source/ExternalSDKs/JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="Source/ExternalSDKs/JUCE/modules"/>
+        <MODULEPATH id="juce_cryptography" path="Source/ExternalSDKs/JUCE/modules"/>
+        <MODULEPATH id="juce_core" path="Source/ExternalSDKs/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="Source/ExternalSDKs/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="Source/ExternalSDKs/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="Source/ExternalSDKs/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="Source/ExternalSDKs/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="Source/ExternalSDKs/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_basics" path="Source/ExternalSDKs/JUCE/modules"/>
+      </MODULEPATHS>
+    </XCODE_MAC>
   </EXPORTFORMATS>
   <MODULES>
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>

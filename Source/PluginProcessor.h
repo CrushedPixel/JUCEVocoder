@@ -6,7 +6,7 @@
 // For timing
 #include <chrono>
 // for OutputDebugString()
-#include <windows.h>
+//#include <windows.h>
 #include <stdio.h>
 // For sin(), pow(), sqrt() - maybe only need cmath
 #include <math.h>
