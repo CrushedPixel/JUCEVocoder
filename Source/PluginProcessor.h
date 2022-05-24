@@ -103,6 +103,9 @@ private:
 	//Timer variables
 	bool timerFlag = true;
 	std::chrono::steady_clock::time_point started;
+    
+    // Crude way of detecting whether the plugin is running as a MIDI-controlled effect.
+    bool receivedMidi;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (VocoderProcessor)

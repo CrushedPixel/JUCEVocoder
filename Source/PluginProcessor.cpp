@@ -3,16 +3,11 @@
 
 //==============================================================================
 VocoderProcessor::VocoderProcessor()
-#ifndef JucePlugin_PreferredChannelConfigurations
 	: AudioProcessor(BusesProperties()
-#if ! JucePlugin_IsMidiEffect
-#if ! JucePlugin_IsSynth
-		.withInput("Input", AudioChannelSet::stereo(), true)
-#endif
+		.withInput("Input", AudioChannelSet::stereo(), true) // (optional) carrier
+        .withInput("Sidechain", AudioChannelSet::stereo(), true) // modulator
 		.withOutput("Output", AudioChannelSet::stereo(), true)
-#endif
-	), fftAudio(fftOrder), fftMIDI(fftOrder), fftInverse(fftOrder)
-#endif
+	), fftAudio(fftOrder), fftMIDI(fftOrder), fftInverse(fftOrder), receivedMidi(false)
 {
     
     mySynth.clearVoices();
@@ -114,6 +109,7 @@ void VocoderProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 	zeromem(fftMIDITemp, sizeof(fftMIDITemp));
 	zeromem(outStore, sizeof(outStore));
 
+    receivedMidi = false;
 }
 
 void VocoderProcessor::releaseResources()
@@ -147,7 +143,8 @@ bool VocoderProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 #endif
 
 void VocoderProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& midiMessages)
-{	
+{
+    if (!midiMessages.isEmpty()) { receivedMidi = true; }
 
 	// TODO: add gates for both MIDI and audio inputs, disallowing any vocoding if either stream is silent
 	//		 bandlimit saw synth to get rid of aliasing (will have to use the user-chosen sampling rate to determine cut-off frequency)
@@ -179,15 +176,27 @@ void VocoderProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& mid
 
 	mySynth.renderNextBlock(tempBuf, midiMessages, 0, numSamples);
 	midiMessages.clear();
+    
+    // When running in Logic as a MIDI-controlled effect, the sidechain input is provided
+    // on bus buffer 0 instead of bus buffer 1. Buffer 1 is empty in that scenario.
+    auto carrierBufferIndex = receivedMidi ? 1 : 0;
+    auto modulatorBufferIndex = receivedMidi ? 0 : 1;
 	
 	// Get read pointers to first channel - copy results to both channels (treat as mono)
-	auto* audioChannelData = buffer.getReadPointer(0);
+    auto carrierBuffer = getBusBuffer(buffer, true, carrierBufferIndex);
+    auto *carrierChannelData = carrierBuffer.getReadPointer(0);
+    
 	auto* midiChannelData = tempBuf.getReadPointer(0);
+    
+    // if there is only a sidechain and no main input, use the sidechain which is then in channel 0
+    
+    auto modulatorBuffer = getBusBuffer(buffer, true, modulatorBufferIndex);
+    auto *modulatorChannelData = modulatorBuffer.getReadPointer(0);
 
 	for (int sample = 0; sample < numSamples; ++sample)
 	{
-		audioInputQueue.push(audioChannelData[sample]);
-		midiInputQueue.push(midiChannelData[sample]);
+		audioInputQueue.push(modulatorChannelData[sample]);
+		midiInputQueue.push(carrierChannelData[sample] + midiChannelData[sample]);
 	}
 
 	// Probably not necessary - but ensures that no original input audio makes it out
