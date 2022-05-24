@@ -85,17 +85,17 @@ private:
     
     double lastSampleRate;
 	// Stores output of synthesizer
-	AudioBuffer<float> tempBuf;
+	AudioBuffer<float> synthBuf;
 	// The actual FFT objects
-	dsp::FFT fftAudio, fftMIDI, fftInverse;
+	dsp::FFT fftCarrier, fftModulator, fftInverse;
 	// Gets passed through FFT and stores output
-	float fftAudioTemp[fftSize], fftMIDITemp[fftSize];
-	float fftAudioOut[fftSize * 2], fftMIDIOut[fftSize * 2];
+	float fftCarrierTemp[fftSize], fftModulatorTemp[fftSize];
+	float fftCarrierOut[fftSize * 2], fftModulatorOut[fftSize * 2];
 	float outStore[fftSize];
 	float signalMag[fftSize];
-	float fftAudioEnv[fftSize];
+	float fftCarrierEnv[fftSize];
 	// Experimenting with queues (adapting deque containers by default)
-	std::queue<float> audioInputQueue, midiInputQueue, fftOutputQueue;
+	std::queue<float> carrierInputQueue, modulatorInputQueue, fftOutputQueue;
 	// 1024-point sine envelope
 	double sinenv[fftSize];
 	// OLA output

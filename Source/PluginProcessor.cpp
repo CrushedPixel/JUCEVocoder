@@ -7,7 +7,7 @@ VocoderProcessor::VocoderProcessor()
 		.withInput("Input", AudioChannelSet::stereo(), true) // (optional) carrier
         .withInput("Sidechain", AudioChannelSet::stereo(), true) // modulator
 		.withOutput("Output", AudioChannelSet::stereo(), true)
-	), fftAudio(fftOrder), fftMIDI(fftOrder), fftInverse(fftOrder), receivedMidi(false)
+	), fftCarrier(fftOrder), fftModulator(fftOrder), fftInverse(fftOrder), receivedMidi(false)
 {
     
     mySynth.clearVoices();
@@ -105,8 +105,8 @@ void VocoderProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 		sinenv[envSamp] = sin(((float)envSamp / fftSize) * PI);
 
 	// Zero some buffers
-	zeromem(fftAudioTemp, sizeof(fftAudioTemp));
-	zeromem(fftMIDITemp, sizeof(fftMIDITemp));
+	zeromem(fftCarrierTemp, sizeof(fftCarrierTemp));
+	zeromem(fftModulatorTemp, sizeof(fftModulatorTemp));
 	zeromem(outStore, sizeof(outStore));
 
     receivedMidi = false;
@@ -171,10 +171,10 @@ void VocoderProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& mid
 	for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
 		buffer.clear(i, 0, numSamples);
 
-	tempBuf.clear();
-	tempBuf.setSize(totalNumOutputChannels, numSamples);
+	synthBuf.clear();
+	synthBuf.setSize(totalNumOutputChannels, numSamples);
 
-	mySynth.renderNextBlock(tempBuf, midiMessages, 0, numSamples);
+	mySynth.renderNextBlock(synthBuf, midiMessages, 0, numSamples);
 	midiMessages.clear();
     
     // When running in Logic as a MIDI-controlled effect, the sidechain input is provided
@@ -186,50 +186,49 @@ void VocoderProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& mid
     auto carrierBuffer = getBusBuffer(buffer, true, carrierBufferIndex);
     auto *carrierChannelData = carrierBuffer.getReadPointer(0);
     
-	auto* midiChannelData = tempBuf.getReadPointer(0);
+	auto* midiChannelData = synthBuf.getReadPointer(0);
     
     // if there is only a sidechain and no main input, use the sidechain which is then in channel 0
-    
     auto modulatorBuffer = getBusBuffer(buffer, true, modulatorBufferIndex);
     auto *modulatorChannelData = modulatorBuffer.getReadPointer(0);
 
 	for (int sample = 0; sample < numSamples; ++sample)
 	{
-		audioInputQueue.push(modulatorChannelData[sample]);
-		midiInputQueue.push(carrierChannelData[sample] + midiChannelData[sample]);
+		carrierInputQueue.push(modulatorChannelData[sample]);
+		modulatorInputQueue.push(carrierChannelData[sample] + midiChannelData[sample]);
 	}
 
 	// Probably not necessary - but ensures that no original input audio makes it out
 	buffer.clear();
 
 	// Compute vocoded result while enough input samples are available
-	while (midiInputQueue.size() >= fftSize/2)
+	while (modulatorInputQueue.size() >= fftSize/2)
 	{
 
 		// Copy input samples into FFT processing buffer, moving half an FFT block at a time for overlap-add
 		for (int i = 0; i < (fftSize / 2); i++)
 		{
-			fftAudioTemp[i] = fftAudioTemp[i + (fftSize / 2)];
-			fftMIDITemp[i] = fftMIDITemp[i + (fftSize / 2)];
+			fftCarrierTemp[i] = fftCarrierTemp[i + (fftSize / 2)];
+			fftModulatorTemp[i] = fftModulatorTemp[i + (fftSize / 2)];
 
-			fftAudioTemp[i + (fftSize / 2)] = audioInputQueue.front();
-			fftMIDITemp[i + (fftSize / 2)] = midiInputQueue.front();
+			fftCarrierTemp[i + (fftSize / 2)] = carrierInputQueue.front();
+			fftModulatorTemp[i + (fftSize / 2)] = modulatorInputQueue.front();
 
-			if (!audioInputQueue.empty())
-				audioInputQueue.pop();
-			if (!midiInputQueue.empty())
-				midiInputQueue.pop();
+			if (!carrierInputQueue.empty())
+				carrierInputQueue.pop();
+			if (!modulatorInputQueue.empty())
+				modulatorInputQueue.pop();
 		}
 
 		// Change to sizeof(double) if you ever switch to doubles!
-		zeromem(fftAudioOut, sizeof(fftAudioOut));
-		memcpy(fftAudioOut, fftAudioTemp, fftSize * sizeof(float));
-		zeromem(fftMIDIOut, sizeof(fftMIDIOut));
-		memcpy(fftMIDIOut, fftMIDITemp, fftSize * sizeof(float));
+		zeromem(fftCarrierOut, sizeof(fftCarrierOut));
+		memcpy(fftCarrierOut, fftCarrierTemp, fftSize * sizeof(float));
+		zeromem(fftModulatorOut, sizeof(fftModulatorOut));
+		memcpy(fftModulatorOut, fftModulatorTemp, fftSize * sizeof(float));
 
-		float inputAudioRMSAmplitude = calculateRMSAmplitudeOfBlock(fftAudioOut);
+		float inputAudioRMSAmplitude = calculateRMSAmplitudeOfBlock(fftCarrierOut);
 
-		float* vocoderOutput = vocode(fftAudioOut, fftMIDIOut);
+		float* vocoderOutput = vocode(fftCarrierOut, fftModulatorOut);
 
 		float outputAudioRMSAmplitude = calculateRMSAmplitudeOfBlock(vocoderOutput);
 		
@@ -320,8 +319,8 @@ float* VocoderProcessor::vocode(float* modulator, float* carrier)
 	multiplyBySineEnvelope(carrier);
 
 	// Perform forward FFTs
-	fftAudio.performRealOnlyForwardTransform(modulator, true);
-	fftMIDI.performRealOnlyForwardTransform(carrier, true);
+	fftCarrier.performRealOnlyForwardTransform(modulator, true);
+	fftModulator.performRealOnlyForwardTransform(carrier, true);
 
 	// Get magnitudes of signal spectrum
 	getMagnitudeOfInterleavedComplexArray(modulator);
@@ -336,7 +335,7 @@ float* VocoderProcessor::vocode(float* modulator, float* carrier)
 	// Multiply carrier spectrum by signal spectrum envelope
 	for (int outSample = 0; outSample < 2 * fftSize; outSample++)
 	{
-		fftOut[outSample] = carrier[outSample] * fftAudioEnv[outSample / 2];
+		fftOut[outSample] = carrier[outSample] * fftCarrierEnv[outSample / 2];
 	}
 
 	fftInverse.performRealOnlyInverseTransform(fftOut);
@@ -348,14 +347,14 @@ float* VocoderProcessor::vocode(float* modulator, float* carrier)
 
 void VocoderProcessor::smoothSpectrum()
 {
-	zeromem(fftAudioEnv, sizeof(fftAudioEnv));
+	zeromem(fftCarrierEnv, sizeof(fftCarrierEnv));
 	for (int smoothSamp = 0; smoothSamp < fftSize; smoothSamp++) {
 		for (int j = 0; j < 10; j++) {
 			if ((smoothSamp - j) >= 0) {
-				fftAudioEnv[smoothSamp] += signalMag[smoothSamp - j];
+				fftCarrierEnv[smoothSamp] += signalMag[smoothSamp - j];
 			}
 		}
-		fftAudioEnv[smoothSamp] /= 10;
+		fftCarrierEnv[smoothSamp] /= 10;
 	}
 }
 
@@ -365,7 +364,7 @@ void VocoderProcessor::getMagnitudeOfInterleavedComplexArray(float *array)
 
 	for (int i = 0; i < fftSize; ++i)
 	{
-		signalMag[i] = sqrt(pow(fftAudioOut[2 * i], 2) + pow(fftAudioOut[2 * i + 1], 2));
+		signalMag[i] = sqrt(pow(fftCarrierOut[2 * i], 2) + pow(fftCarrierOut[2 * i + 1], 2));
 	}
 }
 
