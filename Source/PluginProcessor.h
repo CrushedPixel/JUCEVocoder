@@ -93,7 +93,7 @@ private:
 	float fftCarrierOut[fftSize * 2], fftModulatorOut[fftSize * 2];
 	float outStore[fftSize];
 	float signalMag[fftSize];
-	float fftCarrierEnv[fftSize];
+	float fftModulatorEnv[fftSize];
 	// Experimenting with queues (adapting deque containers by default)
 	std::queue<float> carrierInputQueue, modulatorInputQueue, fftOutputQueue;
 	// 1024-point sine envelope

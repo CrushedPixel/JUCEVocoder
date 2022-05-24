@@ -194,15 +194,15 @@ void VocoderProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& mid
 
 	for (int sample = 0; sample < numSamples; ++sample)
 	{
-		carrierInputQueue.push(modulatorChannelData[sample]);
-		modulatorInputQueue.push(carrierChannelData[sample] + midiChannelData[sample]);
+		modulatorInputQueue.push(modulatorChannelData[sample]);
+		carrierInputQueue.push(carrierChannelData[sample] + midiChannelData[sample]);
 	}
 
 	// Probably not necessary - but ensures that no original input audio makes it out
 	buffer.clear();
 
 	// Compute vocoded result while enough input samples are available
-	while (modulatorInputQueue.size() >= fftSize/2)
+	while (carrierInputQueue.size() >= fftSize/2)
 	{
 
 		// Copy input samples into FFT processing buffer, moving half an FFT block at a time for overlap-add
@@ -214,10 +214,10 @@ void VocoderProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& mid
 			fftCarrierTemp[i + (fftSize / 2)] = carrierInputQueue.front();
 			fftModulatorTemp[i + (fftSize / 2)] = modulatorInputQueue.front();
 
-			if (!carrierInputQueue.empty())
-				carrierInputQueue.pop();
 			if (!modulatorInputQueue.empty())
 				modulatorInputQueue.pop();
+			if (!carrierInputQueue.empty())
+				carrierInputQueue.pop();
 		}
 
 		// Change to sizeof(double) if you ever switch to doubles!
@@ -226,9 +226,9 @@ void VocoderProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& mid
 		zeromem(fftModulatorOut, sizeof(fftModulatorOut));
 		memcpy(fftModulatorOut, fftModulatorTemp, fftSize * sizeof(float));
 
-		float inputAudioRMSAmplitude = calculateRMSAmplitudeOfBlock(fftCarrierOut);
+		float inputAudioRMSAmplitude = calculateRMSAmplitudeOfBlock(fftModulatorOut);
 
-		float* vocoderOutput = vocode(fftCarrierOut, fftModulatorOut);
+		float* vocoderOutput = vocode(fftModulatorOut, fftCarrierOut);
 
 		float outputAudioRMSAmplitude = calculateRMSAmplitudeOfBlock(vocoderOutput);
 		
@@ -335,7 +335,7 @@ float* VocoderProcessor::vocode(float* modulator, float* carrier)
 	// Multiply carrier spectrum by signal spectrum envelope
 	for (int outSample = 0; outSample < 2 * fftSize; outSample++)
 	{
-		fftOut[outSample] = carrier[outSample] * fftCarrierEnv[outSample / 2];
+		fftOut[outSample] = carrier[outSample] * fftModulatorEnv[outSample / 2];
 	}
 
 	fftInverse.performRealOnlyInverseTransform(fftOut);
@@ -347,14 +347,14 @@ float* VocoderProcessor::vocode(float* modulator, float* carrier)
 
 void VocoderProcessor::smoothSpectrum()
 {
-	zeromem(fftCarrierEnv, sizeof(fftCarrierEnv));
+	zeromem(fftModulatorEnv, sizeof(fftModulatorEnv));
 	for (int smoothSamp = 0; smoothSamp < fftSize; smoothSamp++) {
 		for (int j = 0; j < 10; j++) {
 			if ((smoothSamp - j) >= 0) {
-				fftCarrierEnv[smoothSamp] += signalMag[smoothSamp - j];
+				fftModulatorEnv[smoothSamp] += signalMag[smoothSamp - j];
 			}
 		}
-		fftCarrierEnv[smoothSamp] /= 10;
+		fftModulatorEnv[smoothSamp] /= 10;
 	}
 }
 
@@ -364,7 +364,8 @@ void VocoderProcessor::getMagnitudeOfInterleavedComplexArray(float *array)
 
 	for (int i = 0; i < fftSize; ++i)
 	{
-		signalMag[i] = sqrt(pow(fftCarrierOut[2 * i], 2) + pow(fftCarrierOut[2 * i + 1], 2));
+        int j = i;
+		signalMag[i] = sqrt(pow(fftModulatorOut[2 * j], 2) + pow(fftModulatorOut[2 * i + 1], 2));
 	}
 }
 
